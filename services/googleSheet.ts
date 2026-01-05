@@ -44,4 +44,6 @@ export const api = {
     batchCreateTasks: (tasks: Task[]) => post('BATCH_CREATE_TASKS', tasks),
 
     createTeamMember: (member: TeamMember) => post('CREATE_TEAM', member),
+    updateTeamMember: (member: TeamMember) => post('UPDATE_TEAM', member),
+    deleteTeamMember: (id: string) => post('DELETE_TEAM', { id }),
 };

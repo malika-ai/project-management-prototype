@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Moon, Sun, Monitor, LayoutTemplate } from 'lucide-react';
@@ -32,7 +32,7 @@ const Settings: React.FC = () => {
                     <select 
                         value={settings.theme}
                         onChange={(e) => updateSettings({ theme: e.target.value as 'light' | 'dark' })}
-                        className="p-2 rounded-lg border-gray-200 text-sm"
+                        className="p-2 rounded-lg border-gray-200 text-sm text-gray-900"
                         disabled // Disabled for this demo as CSS is hardcoded for Light
                     >
                         <option value="light">Light Mode</option>

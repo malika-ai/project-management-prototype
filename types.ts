@@ -76,6 +76,7 @@ export interface TeamMember {
   id: string;
   name: string;
   email: string;
+  password: string; // Added password field
   role: Role;
   avatar: string;
 }

@@ -667,6 +667,111 @@ const Tasks: React.FC = () => {
             </div>
         )}
        </AnimatePresence>
+
+       {/* Log Progress Modal */}
+       <AnimatePresence>
+        {isLogModalOpen && activeTaskForLog && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+                <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">Log Progress</h2>
+                    <p className="text-sm text-gray-500 mb-4">{activeTaskForLog.title}</p>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between mb-1">
+                                <label className="text-sm font-medium text-gray-700">Completion</label>
+                                <span className="text-sm font-bold text-indigo-600">{logPercent}%</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                step="5"
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                value={logPercent} 
+                                onChange={(e) => setLogPercent(parseInt(e.target.value))} 
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>Done (100%)</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Progress Note</label>
+                            <textarea 
+                                className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900"
+                                rows={3}
+                                placeholder="What did you work on?"
+                                value={logNote}
+                                onChange={(e) => setLogNote(e.target.value)}
+                            ></textarea>
+                        </div>
+
+                        {TRANSITION_TASKS.includes(activeTaskForLog.title) && (
+                            <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 space-y-3">
+                                <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center">
+                                    <ListChecks className="w-3 h-3 mr-1" /> Next Stage Setup
+                                </h4>
+                                
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Add Requirements (Subtasks)</label>
+                                    <div className="flex gap-1 mb-2">
+                                        <input 
+                                            type="text" 
+                                            className="flex-1 p-2 text-xs border rounded-lg text-gray-900" 
+                                            placeholder="New Requirement..."
+                                            value={tempNextReq}
+                                            onChange={e => setTempNextReq(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addNextRequirement())}
+                                        />
+                                        <button onClick={addNextRequirement} className="bg-indigo-200 text-indigo-700 px-3 rounded-lg text-xs font-bold">+</button>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {nextStageRequirements.map((req, i) => (
+                                            <div key={i} className="flex justify-between items-center text-xs bg-white p-1.5 rounded border border-indigo-100 text-indigo-600">
+                                                <span>{req}</span>
+                                                <button onClick={() => removeNextRequirement(i)}><X className="w-3 h-3 text-red-400" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Add-ons (New Tasks)</label>
+                                    <div className="flex gap-1 mb-2">
+                                        <input 
+                                            type="text" 
+                                            className="flex-1 p-2 text-xs border rounded-lg text-gray-900" 
+                                            placeholder="New Add-on..."
+                                            value={tempNextAddon}
+                                            onChange={e => setTempNextAddon(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addNextAddon())}
+                                        />
+                                        <button onClick={addNextAddon} className="bg-purple-200 text-purple-700 px-3 rounded-lg text-xs font-bold">+</button>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {nextStageAddons.map((addon, i) => (
+                                            <div key={i} className="flex justify-between items-center text-xs bg-white p-1.5 rounded border border-purple-100 text-purple-600">
+                                                <span>{addon}</span>
+                                                <button onClick={() => removeNextAddon(i)}><X className="w-3 h-3 text-red-400" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                            <button onClick={() => setIsLogModalOpen(false)} className="flex-1 py-2.5 text-gray-500 font-medium text-sm hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+                            <button onClick={handleSaveLog} className="flex-1 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">Save Log</button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+       </AnimatePresence>
     </div>
   );
 };
