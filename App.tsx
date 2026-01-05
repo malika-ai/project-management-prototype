@@ -11,6 +11,7 @@ import Monitor from './pages/Monitor';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
 import Pipeline from './pages/Pipeline';
+import Activity from './pages/Activity';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="activity" element={<Activity />} />
             <Route path="clients" element={<Clients />} />
             <Route path="pipeline" element={<Pipeline />} />
             <Route path="projects" element={<Projects />} />

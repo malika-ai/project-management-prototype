@@ -12,8 +12,9 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = "", 
     <div 
       onClick={onClick}
       className={`
-        bg-white/70 backdrop-blur-xl border border-white/50 shadow-sm rounded-2xl
-        ${hoverEffect ? 'transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-white/80 cursor-pointer' : ''}
+        bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-sm rounded-2xl
+        transition-all duration-300
+        ${hoverEffect ? 'hover:shadow-lg hover:-translate-y-1 hover:bg-white/80 dark:hover:bg-slate-800/80 cursor-pointer' : ''}
         ${className}
       `}
     >

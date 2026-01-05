@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Hexagon, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Login: React.FC = () => {
   const { login, team, isLoading } = useApp();
   const navigate = useNavigate();
   
-  // Default Credentials Pre-filled
-  const [email, setEmail] = useState('admin@malika.ai');
-  const [password, setPassword] = useState('admin123');
+  // Default Credentials Empty
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,18 +22,6 @@ const Login: React.FC = () => {
       setError('Invalid email or password.');
     }
   };
-
-  // Quick fill for demo
-  const quickLogin = (demoEmail: string, demoPass: string) => {
-      setEmail(demoEmail);
-      setPassword(demoPass);
-      // Auto login for better UX in demo
-      if(login(demoEmail, demoPass)) {
-          navigate('/');
-      } else {
-          setError('Demo login failed (check console/logic)');
-      }
-  }
 
   if (isLoading) {
       return (
@@ -61,8 +49,12 @@ const Login: React.FC = () => {
         className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl rounded-3xl p-8 w-full max-w-md"
       >
         <div className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-indigo-200 shadow-lg mb-4">
-                <Hexagon className="w-7 h-7 text-white" />
+            <div className="w-24 h-24 flex items-center justify-center mb-4 filter drop-shadow-xl">
+                 <img 
+                    src="https://files.cekat.ai/logo_malika_icon__md8rHz-removebg-preview_WbNddo.png" 
+                    alt="Malika AI Logo" 
+                    className="w-full h-full object-contain"
+                />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome to Malika AI</h1>
             <p className="text-gray-500 text-sm mt-1">Sign in to your agency workspace</p>
@@ -117,10 +109,6 @@ const Login: React.FC = () => {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                 </div>
-                {/* Visual hint for default password if fields are empty */}
-                {password === '' && (
-                    <p className="text-[10px] text-gray-400 mt-1 pl-1">Default: <span className="font-mono">admin123</span></p>
-                )}
             </div>
             
             {error && (
@@ -137,23 +125,6 @@ const Login: React.FC = () => {
                 Enter Workspace <ArrowRight className="w-4 h-4 ml-2" />
             </button>
         </form>
-
-        {team.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-gray-200/60">
-                <p className="text-xs text-gray-400 text-center mb-3">Available Accounts (Demo)</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                    {team.map(m => (
-                        <button 
-                            key={m.id} 
-                            onClick={() => quickLogin(m.email, m.password)}
-                            className="text-xs bg-gray-100 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 px-3 py-1 rounded-full transition-colors"
-                        >
-                            {m.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        )}
       </motion.div>
     </div>
   );

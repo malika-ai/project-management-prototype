@@ -129,7 +129,7 @@ const Clients: React.FC = () => {
 
             <div className="flex items-center space-x-3 text-gray-400 mb-4">
                 <a href={`mailto:${client.email}`} className="hover:text-indigo-600 transition-colors"><Mail className="w-4 h-4" /></a>
-                {/* <a href={`https://wa.me/${client.whatsapp.replace('+', '')}`} className="hover:text-green-600 transition-colors"><Phone className="w-4 h-4" /></a> */}
+                <a href={`https://wa.me/${String(client.whatsapp || '').replace('+', '')}`} className="hover:text-green-600 transition-colors" target="_blank" rel="noopener noreferrer"><Phone className="w-4 h-4" /></a>
             </div>
 
             <div className="mt-auto pt-4 border-t border-gray-100">

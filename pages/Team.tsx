@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { GlassCard } from '../components/ui/GlassCard';
-import { UserPlus, Mail, Shield, CalendarDays, Clock, CheckSquare, FileText, X, AlertTriangle, CheckCircle, List, Briefcase, Lock, Eye, EyeOff, Check, RotateCcw, Trash2 } from 'lucide-react';
+import { UserPlus, Mail, Shield, CalendarDays, Clock, CheckSquare, FileText, X, AlertTriangle, CheckCircle, List, Briefcase, Lock, Eye, EyeOff, Check, RotateCcw, Trash2, Circle } from 'lucide-react';
 import { ROLES } from '../constants';
 import { Role, TeamMember, Task } from '../types';
 import { formatTime } from '../utils/formatTime';
@@ -226,11 +226,17 @@ const Team: React.FC = () => {
                                         onChange={e => setTempPassword(e.target.value)}
                                         autoFocus
                                         onClick={e => e.stopPropagation()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.stopPropagation();
+                                                saveNewPassword(member);
+                                            }
+                                        }}
                                     />
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); saveNewPassword(member); }}
                                         className="bg-green-100 hover:bg-green-200 text-green-700 p-1 rounded transition-colors"
-                                        title="Save"
+                                        title="Save (Enter)"
                                     >
                                         <Check className="w-3 h-3" />
                                     </button>
@@ -432,31 +438,45 @@ const TaskList: React.FC<{ tasks: Task[], type: 'completed' | 'overdue' | 'pendi
             {tasks.map(task => {
                 const completedSub = task.subtasks.filter(s => s.isCompleted).length;
                 return (
-                    <div key={task.id} className="p-4 hover:bg-gray-50 transition-colors flex justify-between items-center group">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{getClientName(task.projectId)}</span>
-                                {type === 'overdue' && (
-                                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">
-                                        Due {new Date(task.deadline).toLocaleDateString()}
-                                    </span>
-                                )}
-                            </div>
-                            <h4 className={`text-sm font-medium text-gray-900 ${type === 'completed' ? 'line-through decoration-gray-300' : ''}`}>
-                                {task.title}
-                            </h4>
-                            {task.subtasks.length > 0 && (
-                                <div className="mt-1 text-xs text-gray-500 flex items-center">
-                                    <List className="w-3 h-3 mr-1" />
-                                    {completedSub}/{task.subtasks.length} subtasks
+                    <div key={task.id} className="p-4 hover:bg-gray-50 transition-colors flex flex-col group">
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{getClientName(task.projectId)}</span>
+                                    {type === 'overdue' && (
+                                        <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">
+                                            Due {new Date(task.deadline).toLocaleDateString()}
+                                        </span>
+                                    )}
                                 </div>
-                            )}
+                                <h4 className={`text-sm font-medium text-gray-900 ${type === 'completed' ? 'line-through decoration-gray-300' : ''}`}>
+                                    {task.title}
+                                </h4>
+                            </div>
+                            <div className="text-right ml-4">
+                                <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    {formatTime(task.timeSpent)}
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-right">
-                             <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                 {formatTime(task.timeSpent)}
+                        
+                        {/* Subtasks Detail List */}
+                        {task.subtasks.length > 0 && (
+                             <div className="mt-2 pl-4 border-l-2 border-gray-100 space-y-1">
+                                {task.subtasks.map(sub => (
+                                    <div key={sub.id} className="flex items-center text-xs text-gray-500">
+                                        {sub.isCompleted ? (
+                                            <CheckCircle className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
+                                        ) : (
+                                            <Circle className="w-3 h-3 text-gray-300 mr-2 flex-shrink-0" />
+                                        )}
+                                        <span className={sub.isCompleted ? "line-through opacity-70" : ""}>
+                                            {sub.title}
+                                        </span>
+                                    </div>
+                                ))}
                              </div>
-                        </div>
+                        )}
                     </div>
                 );
             })}

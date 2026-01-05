@@ -29,6 +29,7 @@ export interface Subtask {
   id: string;
   title: string;
   isCompleted: boolean;
+  completedAt?: string; // Added timestamp
 }
 
 export interface Client {
@@ -52,7 +53,7 @@ export interface Project {
   name: string;
   clientId?: string; // Optional: Project might not belong to a client (Internal)
   description?: string;
-  status: 'Active' | 'Completed' | 'On Hold';
+  status: 'Active' | 'Completed' | 'On Hold' | 'Archived';
 }
 
 export interface Task {
@@ -62,6 +63,7 @@ export interface Task {
   division: Division;
   assignees: string[]; // UPDATED: Array of Team Member IDs
   isCompleted: boolean;
+  completedAt?: string; // Added timestamp
   timeSpent: number; // in seconds (Total cumulative man-seconds)
   activeUserIds: string[]; // UPDATED: Array of Team Member IDs currently running the timer
   deadline: string; // ISO Date string
@@ -85,6 +87,7 @@ export interface AppSettings {
   theme: 'light' | 'dark'; // Prepared for future use
   compactView: boolean;
   sidebarCollapsed: boolean;
+  workflowDeadlines: Record<string, number>; // Key: Task Title, Value: Days to escalate/complete
 }
 
 export interface AppState {

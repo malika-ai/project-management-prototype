@@ -9,6 +9,7 @@ interface AppContextType extends AppState {
   logout: () => void;
   addClient: (client: Omit<Client, 'id' | 'joinedDate' | 'totalTimeSpent' | 'requirements' | 'addons'>, requirements: string[], addons: string[]) => void;
   addProject: (project: Omit<Project, 'id' | 'status'>) => void;
+  updateProject: (project: Partial<Project> & { id: string }) => void;
   addTask: (task: Omit<Task, 'id' | 'isCompleted' | 'timeSpent' | 'activeUserIds' | 'completionPercentage' | 'subtasks' | 'createdAt'>) => void;
   addTeamMember: (member: Omit<TeamMember, 'id' | 'avatar'>) => void;
   updateTeamMember: (member: TeamMember) => void;
@@ -17,7 +18,9 @@ interface AppContextType extends AppState {
   toggleTaskTimer: (taskId: string) => void;
   logTaskProgress: (taskId: string, note: string, percentage: number, newRequirements?: string[], newAddons?: string[]) => void;
   updateTaskPriority: (taskId: string, priority: TaskPriority) => void;
+  updateTaskDeadline: (taskId: string, newDeadline: string) => void;
   assignTask: (taskId: string, memberId: string) => void;
+  updateTaskAssignees: (taskId: string, memberIds: string[]) => void;
   completeTask: (taskId: string) => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
@@ -34,6 +37,13 @@ const futureDate = (days: number) => {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Initialize default workflow deadlines from constants
+  const defaultWorkflowDeadlines = WORKFLOW_SEQUENCE.reduce((acc, stage) => ({
+      ...acc,
+      [stage.taskTitle]: stage.daysToComplete
+  }), {} as Record<string, number>);
+
   const [state, setState] = useState<AppState>({
       currentUser: null,
       clients: [],
@@ -43,9 +53,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       settings: {
           theme: 'light',
           compactView: false,
-          sidebarCollapsed: false
+          sidebarCollapsed: false,
+          workflowDeadlines: defaultWorkflowDeadlines
       }
   });
+
+  // Theme Side Effect
+  useEffect(() => {
+    if (state.settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [state.settings.theme]);
 
   // Load Data from Google Sheets on Mount
   useEffect(() => {
@@ -79,17 +99,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       loadData();
   }, []);
 
+  // Background Polling for Real-time Sync (Every 10 seconds)
+  useEffect(() => {
+    const POLL_INTERVAL = 10000; // 10 seconds
+
+    const syncData = async () => {
+        // Skip if we are still loading initial data
+        if (isLoading) return;
+
+        try {
+            // Fetch silently (don't set isLoading)
+            const data = await api.fetchAllData();
+            if (data) {
+                 setState(prev => {
+                    return {
+                        ...prev,
+                        clients: data.clients || prev.clients,
+                        projects: data.projects || prev.projects,
+                        tasks: data.tasks || prev.tasks, 
+                        team: (data.team || []).map(m => ({
+                            ...m,
+                            password: m.password || '123456'
+                        }))
+                    };
+                });
+            }
+        } catch (e) {
+            console.error("Background sync failed", e);
+        }
+    };
+
+    const intervalId = setInterval(syncData, POLL_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [isLoading]);
+
   const login = (email: string, password: string) => {
       const user = state.team.find(m => m.email.toLowerCase() === email.toLowerCase());
       
-      // Check if user exists and password matches
       if (user && user.password === password) {
           setState(prev => ({ ...prev, currentUser: user }));
           return true;
       }
       
-      // First Time Login (Initialization): If Team is empty, create Admin
-      // This sends the credentials 'admin@malika.ai' / 'admin123' to the spreadsheet
       if (state.team.length === 0) {
           const demoUser: TeamMember = { 
             id: 'admin', 
@@ -100,7 +151,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             avatar: 'https://ui-avatars.com/api/?name=System+Admin&background=4f46e5&color=fff' 
           };
           setState(prev => ({ ...prev, currentUser: demoUser, team: [demoUser] }));
-          api.createTeamMember(demoUser); // Writes to Google Sheet
+          api.createTeamMember(demoUser); 
           return true;
       }
       return false;
@@ -116,55 +167,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setState(prev => {
         let hasChanges = false;
         const now = new Date();
+        const tasksToSync: Task[] = []; // Store tasks that need API updates
+        const settings = prev.settings;
         
         const newTasks = prev.tasks.map(task => {
           let updatedTask = { ...task };
+          let priorityChanged = false;
           
-          // 1. Time Tracking Logic
+          // 1. Update Time Spent (Local Only)
           if (task.activeUserIds.length > 0) {
-            // Increment by the number of active users (Man-seconds)
             updatedTask.timeSpent = task.timeSpent + task.activeUserIds.length;
             hasChanges = true;
           }
 
-          // 2. Priority Escalation Logic (Auto-Update based on Age)
-          if (!task.isCompleted) {
+          // 2. Automatic Priority Escalation Rule (Dynamic based on Settings)
+          if (!task.isCompleted && task.createdAt) {
              const created = new Date(task.createdAt);
-             const diffTime = Math.abs(now.getTime() - created.getTime());
-             const diffDays = diffTime / (1000 * 60 * 60 * 24);
              
-             let currentPriorityVal = 0;
-             if (task.priority === 'Regular') currentPriorityVal = 1;
-             if (task.priority === 'High') currentPriorityVal = 2;
-             if (task.priority === 'Urgent') currentPriorityVal = 3;
+             if (!isNaN(created.getTime())) { 
+                 const diffTime = Math.abs(now.getTime() - created.getTime());
+                 const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                 
+                 // Get configured duration for this specific task title, default to 3 days if not found
+                 const maxDays = settings.workflowDeadlines?.[task.title] || 3;
+                 
+                 let currentPriorityVal = 0;
+                 if (task.priority === 'Regular') currentPriorityVal = 1;
+                 if (task.priority === 'High') currentPriorityVal = 2;
+                 if (task.priority === 'Urgent') currentPriorityVal = 3;
 
-             let targetPriority: TaskPriority | null = null;
-             let targetPriorityVal = 0;
+                 let targetPriority: TaskPriority | null = null;
+                 let targetPriorityVal = 0;
 
-             if (diffDays > 3) {
-                 targetPriority = 'Urgent';
-                 targetPriorityVal = 3;
-             } else if (diffDays > 2) {
-                 targetPriority = 'High';
-                 targetPriorityVal = 2;
-             } else if (diffDays > 1) {
-                 targetPriority = 'Regular';
-                 targetPriorityVal = 1;
+                 // Logic: 
+                 // If passed 100% of allowed time -> Urgent
+                 // If passed 70% of allowed time -> High
+                 // Else -> Regular (Default)
+
+                 if (diffDays >= maxDays) {
+                     targetPriority = 'Urgent';
+                     targetPriorityVal = 3;
+                 } else if (diffDays >= (maxDays * 0.7)) {
+                     targetPriority = 'High';
+                     targetPriorityVal = 2;
+                 } else {
+                     targetPriority = 'Regular';
+                     targetPriorityVal = 1;
+                 }
+
+                 // Only update if priority *increases* (Escalation only)
+                 if (targetPriority && targetPriorityVal > currentPriorityVal) {
+                     updatedTask.priority = targetPriority;
+                     hasChanges = true;
+                     priorityChanged = true;
+                 }
              }
+          }
 
-             // Only update if target priority is strictly higher than current
-             if (targetPriority && targetPriorityVal > currentPriorityVal) {
-                 updatedTask.priority = targetPriority;
-                 hasChanges = true;
-             }
+          if (priorityChanged) {
+              tasksToSync.push(updatedTask);
           }
 
           return updatedTask;
         });
 
+        if (tasksToSync.length > 0) {
+            tasksToSync.forEach(t => api.updateTask(t));
+        }
+
         if (!hasChanges) return prev;
 
-        // Update Client Total Time based on active tasks
         const newClients = prev.clients.map(client => {
            const clientProjects = prev.projects.filter(p => p.clientId === client.id).map(p => p.id);
            const activeTaskInClient = newTasks.find(t => t.activeUserIds.length > 0 && clientProjects.includes(t.projectId));
@@ -183,8 +255,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const addClient = (clientData: Omit<Client, 'id' | 'joinedDate' | 'totalTimeSpent' | 'requirements' | 'addons'>, requirements: string[], addons: string[]) => {
-    // 1. Determine first stage from WORKFLOW_SEQUENCE
     const firstStage = WORKFLOW_SEQUENCE[0]; 
+    // Use dynamic duration from settings if available, else fallback to constant
+    const dynamicDays = state.settings.workflowDeadlines?.[firstStage.taskTitle] ?? firstStage.daysToComplete;
 
     const newClient: Client = {
       ...clientData,
@@ -203,7 +276,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         status: 'Active'
     };
 
-    // Generate Default Subtasks
     const initialSubtasks: Subtask[] = firstStage.defaultSubtasks 
         ? firstStage.defaultSubtasks.map(title => ({
             id: Math.random().toString(36).substr(2, 9),
@@ -221,7 +293,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isCompleted: false,
         timeSpent: 0,
         activeUserIds: [],
-        deadline: new Date(new Date().setDate(new Date().getDate() + firstStage.daysToComplete)).toISOString(),
+        deadline: new Date(new Date().setDate(new Date().getDate() + dynamicDays)).toISOString(),
         priority: firstStage.priority,
         completionPercentage: 0,
         subtasks: initialSubtasks,
@@ -244,7 +316,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createdAt: new Date().toISOString()
     }));
 
-    // Optimistic Update
     setState(prev => ({ 
         ...prev, 
         clients: [...prev.clients, newClient],
@@ -252,7 +323,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tasks: [...prev.tasks, firstTask, ...addonTasks]
     }));
 
-    // API Calls
     api.createClient(newClient);
     api.createProject(defaultProject);
     api.batchCreateTasks([firstTask, ...addonTasks]);
@@ -267,6 +337,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setState(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
     api.createProject(newProject);
   };
+  
+  const updateProject = (projectUpdate: Partial<Project> & { id: string }) => {
+      setState(prev => ({
+          ...prev,
+          projects: prev.projects.map(p => p.id === projectUpdate.id ? { ...p, ...projectUpdate } : p)
+      }));
+      api.updateProject(projectUpdate);
+  }
 
   const addTask = (taskData: Omit<Task, 'id' | 'isCompleted' | 'timeSpent' | 'activeUserIds' | 'completionPercentage' | 'subtasks' | 'createdAt'>) => {
     const newTask: Task = {
@@ -284,7 +362,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addTeamMember = (memberData: Omit<TeamMember, 'id' | 'avatar'>) => {
-      // Logic for default password
       const finalPassword = memberData.password && memberData.password.trim() !== '' 
         ? memberData.password 
         : '123456';
@@ -308,7 +385,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }
 
   const deleteTeamMember = (id: string) => {
-      // Optimistic delete: filter out member whose ID matches (as string to be safe)
       setState(prev => ({
           ...prev,
           team: prev.team.filter(m => String(m.id) !== String(id))
@@ -321,7 +397,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const client = prev.clients.find(c => c.id === id);
         if (client) {
             const updated = { ...client, status };
-            api.updateClient(updated); // Background sync
+            api.updateClient(updated); 
             return {
                 ...prev,
                 clients: prev.clients.map(c => c.id === id ? updated : c)
@@ -350,7 +426,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         
         updatedTask = { ...updatedTask, activeUserIds: newActiveUsers };
         
-        // Sync active status (Optional, good for Live Monitor)
         api.updateTask(updatedTask);
 
         return {
@@ -358,9 +433,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             tasks: prev.tasks.map(t => {
                 if (t.id === taskId) return updatedTask!;
                 if (t.activeUserIds.includes(currentUser.id)) {
-                    // Enforce one task at a time for user
                      const otherTask = { ...t, activeUserIds: t.activeUserIds.filter(id => id !== currentUser.id) };
-                     api.updateTask(otherTask); // Sync stop of other task
+                     api.updateTask(otherTask); 
                      return otherTask;
                 }
                 return t;
@@ -370,21 +444,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const logTaskProgress = (taskId: string, note: string, percentage: number, newRequirements?: string[], newAddons?: string[]) => {
-      // Logic is complex, we calculate new state then send API updates for changed entities
       setState(prev => {
           const isNowCompleted = percentage === 100;
           const taskBeforeUpdate = prev.tasks.find(t => t.id === taskId);
           
           if (!taskBeforeUpdate) return prev;
 
-          // 1. Update the current task
           const newActiveUsers = taskBeforeUpdate.activeUserIds.filter(id => id !== prev.currentUser?.id);
           const updatedTask = { 
               ...taskBeforeUpdate, 
               activeUserIds: newActiveUsers,
               completionPercentage: percentage, 
               lastProgressNote: note,
-              isCompleted: isNowCompleted ? true : taskBeforeUpdate.isCompleted 
+              isCompleted: isNowCompleted ? true : taskBeforeUpdate.isCompleted,
+              completedAt: isNowCompleted ? new Date().toISOString() : taskBeforeUpdate.completedAt
           };
 
           api.updateTask(updatedTask);
@@ -392,7 +465,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           let newTasksToAdd: Task[] = [];
           let updatedClients = [...prev.clients];
 
-          // 2. Check Workflow Automation
           if (!taskBeforeUpdate.isCompleted && isNowCompleted) {
               const currentStageIndex = WORKFLOW_SEQUENCE.findIndex(stage => stage.taskTitle === taskBeforeUpdate.title);
               
@@ -403,7 +475,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                       const client = prev.clients.find(c => c.id === project.clientId);
                       
                       if (client) {
-                          // A. Update Client
                           let updatedClient = { ...client };
                           
                           if (newRequirements && newRequirements.length > 0) {
@@ -412,7 +483,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                           if (newAddons && newAddons.length > 0) {
                               updatedClient.addons = [...client.addons, ...newAddons];
                               
-                              // Create Tasks for Addons
                               const createdAddonTasks: Task[] = newAddons.map(addon => ({
                                   id: Math.random().toString(36).substr(2, 9),
                                   title: `Addon: ${addon}`,
@@ -431,12 +501,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                               newTasksToAdd = [...newTasksToAdd, ...createdAddonTasks];
                           }
 
-                          // B. Process Next Workflow Stage
                           if (currentStageIndex < WORKFLOW_SEQUENCE.length - 1) {
                               const nextStage = WORKFLOW_SEQUENCE[currentStageIndex + 1];
                               updatedClient.status = nextStage.stage;
 
-                              // Create Next Task
                               let nextTaskSubtasks: Subtask[] = [];
                               
                               if (newRequirements) {
@@ -454,17 +522,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                                       id: Math.random().toString(36).substr(2, 9), title: dt, isCompleted: false
                                   }))];
                               }
+                              
+                              // Calculate dynamic deadline for next stage
+                              const nextStageDays = prev.settings.workflowDeadlines?.[nextStage.taskTitle] ?? nextStage.daysToComplete;
 
                               const nextTask: Task = {
                                   id: Math.random().toString(36).substr(2, 9),
                                   title: nextStage.taskTitle,
                                   projectId: project.id,
                                   division: nextStage.division,
-                                  assignees: [],
+                                  assignees: taskBeforeUpdate.assignees,
                                   isCompleted: false,
                                   timeSpent: 0,
                                   activeUserIds: [],
-                                  deadline: new Date(new Date().setDate(new Date().getDate() + nextStage.daysToComplete)).toISOString(),
+                                  deadline: new Date(new Date().setDate(new Date().getDate() + nextStageDays)).toISOString(),
                                   priority: nextStage.priority,
                                   completionPercentage: 0,
                                   subtasks: nextTaskSubtasks,
@@ -476,7 +547,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                               updatedClient.status = ClientStatus.Active;
                           }
 
-                          // Update Client in list and API
                           updatedClients = updatedClients.map(c => c.id === client.id ? updatedClient : c);
                           api.updateClient(updatedClient);
                       }
@@ -503,7 +573,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const task = prev.tasks.find(t => t.id === taskId);
         if (!task) return prev;
 
-        const updatedSubtasks = task.subtasks.map(s => s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s);
+        const updatedSubtasks = task.subtasks.map(s => s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted, completedAt: !s.isCompleted ? new Date().toISOString() : undefined } : s);
         
         const totalSubtasks = updatedSubtasks.length;
         const completedSubtasks = updatedSubtasks.filter(s => s.isCompleted).length;
@@ -515,7 +585,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             completionPercentage: newPercentage,
         };
 
-        api.updateTask(updatedTask); // Sync subtask change
+        api.updateTask(updatedTask); 
 
         return {
             ...prev,
@@ -529,6 +599,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const task = prev.tasks.find(t => t.id === taskId);
           if (task) {
               const updated = { ...task, priority };
+              api.updateTask(updated);
+              return {
+                 ...prev,
+                 tasks: prev.tasks.map(t => t.id === taskId ? updated : t)
+              };
+          }
+          return prev;
+      });
+  }
+
+  const updateTaskDeadline = (taskId: string, newDeadline: string) => {
+      setState(prev => {
+          const task = prev.tasks.find(t => t.id === taskId);
+          if (task) {
+              const updated = { ...task, deadline: newDeadline };
               api.updateTask(updated);
               return {
                  ...prev,
@@ -562,6 +647,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
     });
   }
+  
+  const updateTaskAssignees = (taskId: string, memberIds: string[]) => {
+      setState(prev => {
+          const task = prev.tasks.find(t => t.id === taskId);
+          if (!task) return prev;
+          
+          const updated = { ...task, assignees: memberIds };
+          api.updateTask(updated);
+          
+          return {
+              ...prev,
+              tasks: prev.tasks.map(t => t.id === taskId ? updated : t)
+          };
+      });
+  }
 
   const completeTask = (taskId: string) => {
       logTaskProgress(taskId, "Quick Completed", 100);
@@ -579,6 +679,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       logout,
       addClient,
       addProject,
+      updateProject,
       addTask,
       addTeamMember,
       updateTeamMember,
@@ -587,7 +688,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       toggleTaskTimer,
       logTaskProgress,
       updateTaskPriority,
+      updateTaskDeadline,
       assignTask,
+      updateTaskAssignees,
       completeTask,
       toggleSubtask,
       updateSettings
