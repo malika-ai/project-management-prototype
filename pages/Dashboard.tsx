@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center space-x-2 bg-white rounded-xl p-1 border border-gray-200 shadow-sm">
             <CalendarDays className="w-4 h-4 text-gray-400 ml-2" />
             <select 
-                className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer py-2 pr-8 pl-2"
+                className="bg-transparent border-none text-sm font-medium text-gray-900 focus:ring-0 cursor-pointer py-2 pr-8 pl-2"
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
             >

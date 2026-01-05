@@ -71,11 +71,11 @@ const Clients: React.FC = () => {
   const filteredClients = clients.filter(client => {
       const term = searchTerm.toLowerCase();
       return (
-          client.businessName.toLowerCase().includes(term) ||
-          client.name.toLowerCase().includes(term) ||
-          client.businessField.toLowerCase().includes(term) ||
-          client.package.toLowerCase().includes(term) ||
-          client.email.toLowerCase().includes(term)
+          (client.businessName || '').toLowerCase().includes(term) ||
+          (client.name || '').toLowerCase().includes(term) ||
+          (client.businessField || '').toLowerCase().includes(term) ||
+          (client.package || '').toLowerCase().includes(term) ||
+          (client.email || '').toLowerCase().includes(term)
       );
   });
 

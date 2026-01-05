@@ -5,12 +5,14 @@ import { api } from '../services/googleSheet';
 
 interface AppContextType extends AppState {
   isLoading: boolean;
-  login: (email: string) => boolean;
+  login: (email: string, password: string) => boolean;
   logout: () => void;
   addClient: (client: Omit<Client, 'id' | 'joinedDate' | 'totalTimeSpent' | 'requirements' | 'addons'>, requirements: string[], addons: string[]) => void;
   addProject: (project: Omit<Project, 'id' | 'status'>) => void;
   addTask: (task: Omit<Task, 'id' | 'isCompleted' | 'timeSpent' | 'activeUserIds' | 'completionPercentage' | 'subtasks' | 'createdAt'>) => void;
   addTeamMember: (member: Omit<TeamMember, 'id' | 'avatar'>) => void;
+  updateTeamMember: (member: TeamMember) => void;
+  deleteTeamMember: (id: string) => void;
   updateClientStatus: (id: string, status: ClientStatus) => void;
   toggleTaskTimer: (taskId: string) => void;
   logTaskProgress: (taskId: string, note: string, percentage: number, newRequirements?: string[], newAddons?: string[]) => void;
@@ -52,15 +54,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           try {
               const data = await api.fetchAllData();
               if (data) {
+                  // Sanitize Team Data (Ensure password field exists for legacy data)
+                  const sanitizedTeam = (data.team || []).map(m => ({
+                      ...m,
+                      password: m.password || '123456' // Default if missing from DB
+                  }));
+
                   setState(prev => ({
                       ...prev,
                       clients: data.clients || [],
                       projects: data.projects || [],
                       tasks: data.tasks || [],
-                      team: data.team || []
+                      team: sanitizedTeam
                   }));
               } else {
-                  // Fallback if API fails or is empty (First run)
                   console.log("No data fetched or API error. Starting empty.");
               }
           } catch (e) {
@@ -72,18 +79,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       loadData();
   }, []);
 
-  const login = (email: string) => {
+  const login = (email: string, password: string) => {
       const user = state.team.find(m => m.email.toLowerCase() === email.toLowerCase());
-      console.log(state.team);
-      if (user) {
+      
+      // Check if user exists and password matches
+      if (user && user.password === password) {
           setState(prev => ({ ...prev, currentUser: user }));
           return true;
       }
-      // Demo Backdoor for testing if Team list is empty
+      
+      // First Time Login (Initialization): If Team is empty, create Admin
+      // This sends the credentials 'admin@malika.ai' / 'admin123' to the spreadsheet
       if (state.team.length === 0) {
-          const demoUser: TeamMember = { id: 'admin', name: 'Admin Demo', email: email, role: 'Manager', avatar: 'https://ui-avatars.com/api/?name=Admin' };
+          const demoUser: TeamMember = { 
+            id: 'admin', 
+            name: 'System Admin', 
+            email: email, 
+            password: password || 'admin123', 
+            role: 'Manager', 
+            avatar: 'https://ui-avatars.com/api/?name=System+Admin&background=4f46e5&color=fff' 
+          };
           setState(prev => ({ ...prev, currentUser: demoUser, team: [demoUser] }));
-          api.createTeamMember(demoUser);
+          api.createTeamMember(demoUser); // Writes to Google Sheet
           return true;
       }
       return false;
@@ -139,8 +156,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
              if (targetPriority && targetPriorityVal > currentPriorityVal) {
                  updatedTask.priority = targetPriority;
                  hasChanges = true;
-                 // Note: We don't sync this auto-escalation to DB every second to avoid spamming.
-                 // Ideally, sync only when it changes. For now, local state.
              }
           }
 
@@ -269,13 +284,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addTeamMember = (memberData: Omit<TeamMember, 'id' | 'avatar'>) => {
+      // Logic for default password
+      const finalPassword = memberData.password && memberData.password.trim() !== '' 
+        ? memberData.password 
+        : '123456';
+
       const newMember: TeamMember = {
           ...memberData,
+          password: finalPassword,
           id: Math.random().toString(36).substr(2, 9),
           avatar: `https://ui-avatars.com/api/?name=${memberData.name.replace(' ', '+')}&background=random&color=fff`
       };
       setState(prev => ({ ...prev, team: [...prev.team, newMember] }));
       api.createTeamMember(newMember);
+  }
+
+  const updateTeamMember = (member: TeamMember) => {
+      setState(prev => ({
+          ...prev,
+          team: prev.team.map(m => m.id === member.id ? member : m)
+      }));
+      api.updateTeamMember(member);
+  }
+
+  const deleteTeamMember = (id: string) => {
+      // Optimistic delete: filter out member whose ID matches (as string to be safe)
+      setState(prev => ({
+          ...prev,
+          team: prev.team.filter(m => String(m.id) !== String(id))
+      }));
+      api.deleteTeamMember(id);
   }
 
   const updateClientStatus = (id: string, status: ClientStatus) => {
@@ -543,6 +581,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addProject,
       addTask,
       addTeamMember,
+      updateTeamMember,
+      deleteTeamMember,
       updateClientStatus,
       toggleTaskTimer,
       logTaskProgress,
