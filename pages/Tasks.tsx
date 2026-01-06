@@ -120,7 +120,8 @@ const Tasks: React.FC = () => {
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    addTask({ ...taskForm, assignees: [], priority: newTaskColumn });
+    // Using taskForm.priority ensures we use the value set by openTaskModal, preventing stale closure issues
+    addTask({ ...taskForm, assignees: [] }); 
     setIsAddModalOpen(false);
     setTaskForm({ 
         title: '', 
