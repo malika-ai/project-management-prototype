@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { GlassCard } from '../components/ui/GlassCard';
-import { UserPlus, Mail, Shield, CalendarDays, Clock, CheckSquare, FileText, X, AlertTriangle, CheckCircle, List, Briefcase, Lock, Eye, EyeOff, Check, RotateCcw, Trash2, Circle } from 'lucide-react';
+import { UserPlus, Mail, Shield, CalendarDays, Clock, CheckSquare, FileText, X, AlertTriangle, CheckCircle, List, Briefcase, Lock, Eye, EyeOff, Check, RotateCcw, Trash2, Circle, CheckCircle2 } from 'lucide-react';
 import { ROLES } from '../constants';
 import { Role, TeamMember, Task } from '../types';
 import { formatTime } from '../utils/formatTime';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const MotionDiv = motion.div as any;
 
 const Team: React.FC = () => {
   const { team, addTeamMember, updateTeamMember, deleteTeamMember, currentUser, tasks, projects, clients } = useApp();
@@ -317,7 +319,7 @@ const Team: React.FC = () => {
       <AnimatePresence>
         {reportingMember && reportStats && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-                <motion.div 
+                <MotionDiv 
                     initial={{ opacity: 0, scale: 0.95 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -364,7 +366,7 @@ const Team: React.FC = () => {
                              <div className="p-4 bg-green-50 border border-green-100 rounded-2xl">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-bold text-green-500 uppercase tracking-wider">Completed</span>
-                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
                                 </div>
                                 <div className="text-2xl font-bold text-green-900">{reportStats.completedTasksCount} <span className="text-sm text-green-600 font-normal">Tasks</span></div>
                                 <div className="text-xs text-green-600 mt-1">{reportStats.completedSubtasks} / {reportStats.totalSubtasks} Subtasks done</div>
@@ -419,7 +421,7 @@ const Team: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </motion.div>
+                </MotionDiv>
             </div>
         )}
       </AnimatePresence>

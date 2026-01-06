@@ -5,6 +5,9 @@ import { Division, Task, TaskPriority } from '../types';
 import { Play, Pause, Plus, AlertCircle, Calendar, Tag, ChevronDown, Check, ListChecks, Trash2, X, Clock, Minimize2, CheckCircle, Layout, UserPlus, Users, User, ShieldAlert, ArrowRight, Save, Layers, ListPlus, History } from 'lucide-react';
 import { formatTime } from '../utils/formatTime';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TimerDisplay } from '../components/ui/TimerDisplay';
+
+const MotionDiv = motion.div as any;
 
 const PRIORITY_COLUMNS: TaskPriority[] = ['Urgent', 'High', 'Regular', 'Low'];
 
@@ -161,7 +164,8 @@ const Tasks: React.FC = () => {
   const proceedToLog = (task: Task) => {
       // 1. Stop Timer if running
       const isMySessionActive = currentUser && task.activeUserIds.includes(currentUser.id);
-      if (isMySessionActive) toggleTaskTimer(task.id);
+      // NOTE: We don't stop the timer here anymore directly because logTaskProgress handles the solid timer stop logic
+      // But for UI feedback we can just open the modal.
       
       // 2. Setup Log Modal Data
       setActiveTaskLogId(task.id);
@@ -538,9 +542,7 @@ const Tasks: React.FC = () => {
                                                         </div>
                                                     )}
 
-                                                    <span className={`text-xs font-mono ml-3 ${isAnyoneActive ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-400'}`}>
-                                                        {formatTime(task.timeSpent)}
-                                                    </span>
+                                                    <TimerDisplay task={task} className={`text-xs font-mono ml-3 ${isAnyoneActive ? 'text-green-600 dark:text-green-400 font-bold' : 'text-gray-400'}`} />
                                                 </div>
                                                 
                                                 {/* Action Buttons */}
@@ -635,9 +637,7 @@ const Tasks: React.FC = () => {
                                              <img key={member.id} src={member.avatar} alt="Assignee" className="w-6 h-6 rounded-full border border-white dark:border-slate-700 shadow-sm grayscale" />
                                         ))}
                                     </div>
-                                    <div className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                                        {formatTime(task.timeSpent)}
-                                    </div>
+                                    <TimerDisplay task={task} className="text-xs font-mono text-gray-500 dark:text-gray-400" />
                                 </div>
                             </GlassCard>
                         )
@@ -651,7 +651,7 @@ const Tasks: React.FC = () => {
        <AnimatePresence>
        {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 dark:bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{opacity: 0, scale: 0.9}} animate={{opacity: 1, scale: 1}} exit={{opacity: 0, scale: 0.9}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-white/50 dark:border-slate-700">
+            <MotionDiv initial={{opacity: 0, scale: 0.9}} animate={{opacity: 1, scale: 1}} exit={{opacity: 0, scale: 0.9}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-white/50 dark:border-slate-700">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">Add Task to {newTaskColumn}</h2>
                     <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-5 h-5" /></button>
@@ -683,7 +683,7 @@ const Tasks: React.FC = () => {
                         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md">Create Task</button>
                     </div>
                 </form>
-            </motion.div>
+            </MotionDiv>
         </div>
        )}
        </AnimatePresence>
@@ -692,7 +692,7 @@ const Tasks: React.FC = () => {
        <AnimatePresence>
         {isActiveSessionOpen && activeTaskForLog && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 dark:bg-black/60 backdrop-blur-sm">
-                <motion.div initial={{opacity: 0, y: 50}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: 50}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-indigo-100 dark:border-slate-700 relative overflow-hidden">
+                <MotionDiv initial={{opacity: 0, y: 50}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: 50}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-indigo-100 dark:border-slate-700 relative overflow-hidden">
                     {/* Pulsing Background */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-gradient-x"></div>
                     
@@ -715,7 +715,7 @@ const Tasks: React.FC = () => {
                     <div className="mb-8 flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-900/50 rounded-xl p-4 border border-gray-100 dark:border-slate-700">
                         <span className="text-gray-500 dark:text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Current Duration</span>
                         <div className="text-4xl font-mono font-bold text-gray-900 dark:text-white tabular-nums">
-                            {formatTime(activeTaskForLog.timeSpent)}
+                            <TimerDisplay task={activeTaskForLog} />
                         </div>
                     </div>
 
@@ -754,7 +754,7 @@ const Tasks: React.FC = () => {
                     >
                         <Pause className="w-5 h-5 mr-2 fill-current" /> Stop & Log Progress
                     </button>
-                </motion.div>
+                </MotionDiv>
             </div>
         )}
        </AnimatePresence>
@@ -763,7 +763,7 @@ const Tasks: React.FC = () => {
        <AnimatePresence>
         {isLogModalOpen && activeTaskForLog && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 dark:bg-black/60 backdrop-blur-sm">
-                <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} exit={{opacity: 0, scale: 0.95}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-white/50 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+                <MotionDiv initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} exit={{opacity: 0, scale: 0.95}} className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-white/50 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Log Progress</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 truncate">{activeTaskForLog.title}</p>
                     
@@ -895,7 +895,7 @@ const Tasks: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </motion.div>
+                </MotionDiv>
             </div>
         )}
        </AnimatePresence>

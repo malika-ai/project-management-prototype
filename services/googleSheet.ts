@@ -1,4 +1,4 @@
-import { AppState, Client, Project, Task, TeamMember } from '../types';
+import { AppState, Client, Project, Task, TeamMember, AppSettings } from '../types';
 
 // REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAf44RsPBkfCZSjz6HquD6KAb6SRm0eiQU3viDYgmCxz7O4UAyKdeUvp7Xwyu83nA59g/exec'; 
@@ -28,7 +28,8 @@ export const api = {
                 clients: res.data.clients || [],
                 projects: res.data.projects || [],
                 tasks: res.data.tasks || [],
-                team: res.data.team || []
+                team: res.data.team || [],
+                settings: res.data.settings || undefined // Retrieve settings from DB
             };
         }
         return null;
@@ -47,4 +48,7 @@ export const api = {
     createTeamMember: (member: TeamMember) => post('CREATE_TEAM', member),
     updateTeamMember: (member: TeamMember) => post('UPDATE_TEAM', member),
     deleteTeamMember: (id: string) => post('DELETE_TEAM', { id }),
+
+    // New Endpoint for Settings Persistence
+    updateSettings: (settings: AppSettings) => post('UPDATE_SETTINGS', settings),
 };
