@@ -6,6 +6,8 @@ import { CLIENT_STATUSES, STATUS_COLORS, PACKAGES } from '../constants';
 import { Plus, X, Phone, Mail, FileText, Search, Filter, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const MotionDiv = motion.div as any;
+
 const Clients: React.FC = () => {
   const { clients, addClient, updateClientStatus } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,7 +160,7 @@ const Clients: React.FC = () => {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-            <motion.div 
+            <MotionDiv 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -274,7 +276,7 @@ const Clients: React.FC = () => {
                     </button>
                 </div>
               </form>
-            </motion.div>
+            </MotionDiv>
           </div>
         )}
       </AnimatePresence>

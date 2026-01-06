@@ -53,7 +53,8 @@ const Activity: React.FC = () => {
   // Derived Data
   const groupedActivity = useMemo(() => {
     // 1. Filter tasks that are completed OR have completed subtasks
-    const activeTasks = tasks.filter(t => t.isCompleted || t.subtasks.some(s => s.isCompleted));
+    // FIX: Added (Array.isArray(t.subtasks)) check to prevent "t.subtasks.some is not a function" error
+    const activeTasks = tasks.filter(t => t.isCompleted || (Array.isArray(t.subtasks) && t.subtasks.some(s => s.isCompleted)));
     
     // 2. Filter by Date Range (Global Filter)
     const filtered = activeTasks.filter(t => {
@@ -161,7 +162,7 @@ const Activity: React.FC = () => {
                           {groupTasks.map(task => {
                               const info = getClientInfo(task.projectId);
                               const assignees = getAssignees(task.assignees);
-                              const completedSubtasks = task.subtasks.filter(s => s.isCompleted);
+                              const completedSubtasks = Array.isArray(task.subtasks) ? task.subtasks.filter(s => s.isCompleted) : [];
                               
                               return (
                                   <GlassCard key={task.id} className="p-4 relative hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors">

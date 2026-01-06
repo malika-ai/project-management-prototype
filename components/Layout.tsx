@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const MotionAside = motion.aside as any;
+const MotionDiv = motion.div as any;
+
 const SidebarItem = ({ to, icon: Icon, label, collapsed }: { to: string, icon: any, label: string, collapsed: boolean }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
@@ -61,7 +64,7 @@ const Layout: React.FC = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F5F7] dark:bg-slate-950 transition-colors duration-300">
       {/* Sidebar */}
-      <motion.aside 
+      <MotionAside 
         animate={{ width: settings.sidebarCollapsed ? 80 : 256 }}
         className="flex flex-col h-full border-r border-gray-200/50 dark:border-slate-800/50 bg-[#F5F5F7]/50 dark:bg-slate-950/50 backdrop-blur-sm p-4 relative z-20"
       >
@@ -139,18 +142,18 @@ const Layout: React.FC = () => {
               {!settings.sidebarCollapsed && <span className="text-sm">Logout</span>}
           </button>
         </div>
-      </motion.aside>
+      </MotionAside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative">
         <div className="p-8 max-w-7xl mx-auto min-h-full">
-            <motion.div
+            <MotionDiv
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
             >
                 <Outlet />
-            </motion.div>
+            </MotionDiv>
         </div>
       </main>
     </div>

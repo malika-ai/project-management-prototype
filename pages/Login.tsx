@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const MotionDiv = motion.div as any;
+
 const Login: React.FC = () => {
   const { login, team, isLoading } = useApp();
   const navigate = useNavigate();
@@ -26,7 +28,7 @@ const Login: React.FC = () => {
   if (isLoading) {
       return (
           <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-              <motion.div 
+              <MotionDiv 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center"
@@ -36,14 +38,14 @@ const Login: React.FC = () => {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Connecting to Agency DB...</h2>
                   <p className="text-sm text-gray-500 mt-1">Synchronizing team and project data.</p>
-              </motion.div>
+              </MotionDiv>
           </div>
       );
   }
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-      <motion.div 
+      <MotionDiv 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl rounded-3xl p-8 w-full max-w-md"
@@ -125,7 +127,7 @@ const Login: React.FC = () => {
                 Enter Workspace <ArrowRight className="w-4 h-4 ml-2" />
             </button>
         </form>
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 };

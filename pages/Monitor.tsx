@@ -4,6 +4,9 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { formatTime } from '../utils/formatTime';
 import { Pause, Activity, Zap, Coffee } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { TimerDisplay } from '../components/ui/TimerDisplay';
+
+const MotionDiv = motion.div as any;
 
 const Monitor: React.FC = () => {
   const { tasks, toggleTaskTimer, projects, clients, team, currentUser } = useApp();
@@ -54,7 +57,7 @@ const Monitor: React.FC = () => {
                       const isMeActive = currentUser && task.activeUserIds.includes(currentUser.id);
                       
                       return (
-                        <motion.div layout key={task.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <MotionDiv layout key={task.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                             <GlassCard className="p-6 border-l-4 border-l-red-500">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-start space-x-4">
@@ -79,7 +82,7 @@ const Monitor: React.FC = () => {
                                     
                                     <div className="text-right">
                                         <div className="text-3xl font-mono font-bold text-gray-800 tabular-nums">
-                                            {formatTime(task.timeSpent)}
+                                            <TimerDisplay task={task} />
                                         </div>
                                         {isMeActive && (
                                             <button 
@@ -92,7 +95,7 @@ const Monitor: React.FC = () => {
                                     </div>
                                 </div>
                             </GlassCard>
-                        </motion.div>
+                        </MotionDiv>
                       );
                   })
               )}

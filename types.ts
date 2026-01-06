@@ -64,8 +64,9 @@ export interface Task {
   assignees: string[]; // UPDATED: Array of Team Member IDs
   isCompleted: boolean;
   completedAt?: string; // Added timestamp
-  timeSpent: number; // in seconds (Total cumulative man-seconds)
+  timeSpent: number; // in seconds (Total cumulative COMMITTED man-seconds)
   activeUserIds: string[]; // UPDATED: Array of Team Member IDs currently running the timer
+  timerSessions?: Record<string, number>; // NEW: Map of UserId -> Start Timestamp (ms) for accurate tracking
   deadline: string; // ISO Date string
   priority: TaskPriority;
   completionPercentage: number; // 0 - 100
